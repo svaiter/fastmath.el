@@ -224,7 +224,7 @@
 
 ;; amsfont
 (defun fastmath-mathfont-latex-macro (char font)
-  "Construct bold/calmath for CHAR."
+  "Construct bold/calmath for CHAR using FONT familly."
   (cond
    ((equal font "b")
     ;; (concat "\\\\mathbb{" char "}")
@@ -233,7 +233,7 @@
     (concat "\\\\mathcal{" char "}"))))
 
 (defun fastmath--nil-or-empty-p (s)
-  "Return t if nil or \"\"."
+  "Return t if S is nil or \"\"."
   (or (null s)
       (zerop (length s))))
 
@@ -250,7 +250,7 @@
 ;; dont handle when start != nil and end = nil
 ;; mayve refactor with previous
 (defun fastmath--make-sumlike (key index start end)
-  "Make a sumlike."
+  "Make a sumlike with KEY using INDEX from START to END."
   (let* ((opname (car (cdr (assoc key fastmath-sumlike-key))))
          (optex (concat "\\\\" opname))
          (default-start "1"))
@@ -263,6 +263,7 @@
         (concat optex "_{" index "=" start "}^{" end "}")))))
 
 (defun fastmath--make-integral (type start start-al end end-al)
+  "Make an integral of TYPE from START (using START-AL alphabet) to END (using END-AL alphabet)."
   (let ((fstart
          (cond
           ((equal start-al 'greek)
@@ -279,13 +280,14 @@
       (concat "\\\\int_{" fstart "}^{" fend "}"))))
 
 (defun fastmath--make-operator (key letter alphabet)
-  "Make operator."
+  "Make operator with KEY using LETTER (with ALPHABET)."
   (let ((opname (car (cdr (assoc key fastmath-operators-key)))))
     (if (equal alphabet 'greek)
         (concat "\\\\" opname "{" (car (cdr (assoc letter fastmath--ascii-to-greek))) "}")
       (concat "\\\\" opname "{" letter "}"))))
 
 (defun fastmath--make-fraction (num num-al denom denom-al)
+  "Make the fraction NUM over DENOM using NUM-AL and DENOM-AL alphabets."
   (let ((fnum
          (if (equal num-al 'greek)
              (car (cdr (assoc num fastmath--ascii-to-greek)))
@@ -298,11 +300,12 @@
 
 
 (defun fastmath--space-back-search (before limit)
+  "Search backward the expression BEFORE with LIMIT."
   (interactive)
   (re-search-backward (concat fastmath--initial-delimiters before) limit t))
 
 (defun fastmath--expand-symbol (last-space)
-  "Expand a single symbol."
+  "Expand a single symbol starting from LAST-SPACE."
   (dolist (as fastmath-symbol-abbrevs)
     (let ((before (car as))
           (after (car (cdr as))))
@@ -314,7 +317,7 @@
         (throw 'expanded t)))))
 
 (defun fastmath--expand-parenthesis (last-space)
-  "Expand a \\left(\\right)."
+  "Expand a \\left(\\right) starting from LAST-SPACE."
   (cond
    ((fastmath--space-back-search "lpbr" last-space)
     (replace-match "\\1")
@@ -330,7 +333,7 @@
     (throw 'expanded t))))
 
 (defun fastmath--expand-fraction (last-space)
-  "Expand fraction-like expression."
+  "Expand fraction-like expression starting from LAST-SPACE."
   (cond
    ;; Replace //aabb by snippet \frac{\alpha}{\beta}
    ;; Replace //abb by snippet \frac{a}{\beta}
@@ -371,7 +374,7 @@
     (throw 'expanded t))))
 
 (defun fastmath--expand-integral (last-space)
-  "Expand integrals."
+  "Expand integral starting from LAST-SPACE."
   ;; Replace int0a by \int_{0}^{a}
   ;; Replace intR by \int_{\RR}
   ;; Replace intR3 by \int_{\RR^{3}}
@@ -397,7 +400,7 @@
       (throw 'expanded t))))
 
 (defun fastmath--expand-sumlike (last-space)
-  "Expand sum-like double operators."
+  "Expand sum-like double operators starting from LAST-SPACE."
   (when
    ;; Replace sumi3n by \sum_{i=3}^{n} (and prod,bigcup,...)
    ;; Replace sumin by \sum_{i=1}^n
@@ -413,6 +416,7 @@
       (throw 'expanded t))))
 
 (defun fastmath--expand-double-arg-op (last-space)
+  "Expand double operators starting from LAST-SPACE."
   (cond
    ;; Replace pdfx by \frac{\partial f}{\partial x}
    ((fastmath--space-back-search "pd\\([[:alpha:]]\\)\\([[:alpha:]]\\)" last-space)
@@ -425,6 +429,7 @@
     (throw 'expanded t))))
 
 (defun fastmath--expand-single-arg-op (last-space)
+  "Expand single operators starting from LAST-SPACE."
   (cond
    ;; Replace haaa by \hat{\alpha}
    ;; Replace hax by \hat{x}
@@ -443,6 +448,7 @@
    ))
 
 (defun fastmath--expand-mathfont (last-space)
+  "Expand fontification of symbol starting from LAST-SPACE."
   (cond
    ;; Replace bR0n by \mathbb{R}_{n} (or macro \RR_{n})
    ((fastmath--space-back-search "\\(b\\|c\\)\\([[:upper:]]\\)\\(6?\\)\\([[:alnum:]]?\\)" last-space)
@@ -459,6 +465,7 @@
     (throw 'expanded t))))
 
 (defun fastmath--expand-five-chars (last-space)
+  "Expand 5-chars keys starting from LAST-SPACE."
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alpha:]]\\)\\([[:alnum:]]\\)6\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
@@ -469,6 +476,7 @@
         (throw 'expanded t)))))
 
 (defun fastmath--expand-four-chars (last-space)
+  "Expand 4-chars keys starting from LAST-SPACE."
   ;; Replace with 4 char seq xi63 by x_{i}^{3}
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
@@ -494,6 +502,7 @@
         (throw 'expanded t))))))
 
 (defun fastmath--expand-three-chars (last-space)
+  "Expand 3-chars keys starting from LAST-SPACE."
   ;; Deal with 3 char seq
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
@@ -514,6 +523,7 @@
         (throw 'expanded t))))))
 
 (defun fastmath--expand-two-chars (last-space)
+  "Expand 2-chars keys starting from LAST-SPACE."
   ;; Deal with 2 char seq
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
@@ -530,6 +540,7 @@
         (throw 'expanded t))))))
 
 (defun fastmath--expand-special-two-chars (last-space)
+  "Expand (special) 2-chars keys starting from LAST-SPACE."
   ;; Replace fx by snippet Function
   (when (fastmath--space-back-search "fx" last-space)
     (replace-match "\\1")
