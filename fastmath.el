@@ -41,7 +41,7 @@
   :group 'fastmath
   :type 'string)
 
-(defcustom fastmath--ascii-to-greek
+(defcustom fastmath--ascii-to-greek-alist
   '( ;; lower-case
     ("a" "alpha")
     ("b" "beta")
@@ -222,6 +222,10 @@
   "\\([[:space:]]\\|^\\|\\$\\|{\\|(\\|}\\|)\\)"
   "Regexp to match delimiters to stop replacement.")
 
+(defun fastmath--convert-latin-to-greek (char)
+  "Convert a latin CHAR to its equivalent in greek."
+  (concat "\\\\" (car (cdr (assoc char fastmath--ascii-to-greek-alist)))))
+
 ;; amsfont
 (defun fastmath-mathfont-latex-macro (char font)
   "Construct bold/calmath for CHAR using FONT familly."
@@ -267,13 +271,13 @@
   (let ((fstart
          (cond
           ((equal start-al 'greek)
-           (car (cdr (assoc start fastmath--ascii-to-greek))))
+           (fastmath--convert-latin-to-greek start))
           (t
            start)))
         (fend
          (if (and (not (fastmath--nil-or-empty-p end))
                   (equal end-al 'greek))
-             (car (cdr (assoc end fastmath--ascii-to-greek)))
+             (fastmath--convert-latin-to-greek end)
            end)))
     (if (fastmath--nil-or-empty-p fend)
         (concat "\\\\int_{" fstart "}")
@@ -283,18 +287,18 @@
   "Make operator with KEY using LETTER (with ALPHABET)."
   (let ((opname (car (cdr (assoc key fastmath-operators-key)))))
     (if (equal alphabet 'greek)
-        (concat "\\\\" opname "{" (car (cdr (assoc letter fastmath--ascii-to-greek))) "}")
+        (concat "\\\\" opname "{" (car (cdr (assoc letter fastmath--ascii-to-greek-alist))) "}")
       (concat "\\\\" opname "{" letter "}"))))
 
 (defun fastmath--make-fraction (num num-al denom denom-al)
   "Make the fraction NUM over DENOM using NUM-AL and DENOM-AL alphabets."
   (let ((fnum
          (if (equal num-al 'greek)
-             (car (cdr (assoc num fastmath--ascii-to-greek)))
+             (fastmath--convert-latin-to-greek num)
            num))
         (fdenom
          (if (equal denom-al 'greek)
-             (car (cdr (assoc denom fastmath--ascii-to-greek)))
+             (fastmath--convert-latin-to-greek denom)
            denom)))
     (concat "\\\\frac{" fnum "}{" fdenom "}" )))
 
@@ -469,9 +473,9 @@
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
            (third (match-string-no-properties 4))
-           (greek (car (cdr (assoc first fastmath--ascii-to-greek)))))
+           (greek (fastmath--convert-latin-to-greek first)))
       (when (equal first second)
-        (replace-match (concat "\\1\\\\" greek "_{\\4}^{\\5}") t)
+        (replace-match (concat "\\1" greek "_{\\4}^{\\5}") t)
         (throw 'expanded t)))))
 
 (defun fastmath--expand-four-chars (last-space)
@@ -481,15 +485,15 @@
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
            (third (match-string-no-properties 4))
-           (greek (car (cdr (assoc first fastmath--ascii-to-greek)))))
+           (greek (fastmath--convert-latin-to-greek first)))
       (cond
        ((equal first second)
         (cond
          ((equal third "6")
-          (replace-match (concat "\\1\\\\" greek "^{\\5}") t)
+          (replace-match (concat "\\1" greek "^{\\5}") t)
           (throw 'expanded t))
          (t
-          (replace-match (concat "\\1\\\\" greek "_{\\4,\\5}") t)
+          (replace-match (concat "\\1" greek "_{\\4,\\5}") t)
           (throw 'expanded t))))
        ((equal third "6")
         ;; replace x6i by x^{i}
@@ -506,11 +510,11 @@
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
-           (greek (car (cdr (assoc first fastmath--ascii-to-greek)))))
+           (greek (fastmath--convert-latin-to-greek first)))
       (cond
        ((equal first second)
         ;; Replace aa4 by \alpha_{5}
-        (replace-match (concat "\\1\\\\" greek "_{\\4}") t)
+        (replace-match (concat "\\1" greek "_{\\4}") t)
         (throw 'expanded t))
        ((equal second "6")
         ;; Replace x6i by x^{i}
@@ -527,11 +531,11 @@
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
-           (greek (car (cdr (assoc first fastmath--ascii-to-greek)))))
+           (greek (fastmath--convert-latin-to-greek first)))
       (if (equal first second)
           ;; Replace aa by \alpha
           (progn
-            (replace-match (concat "\\1\\\\" greek) t)
+            (replace-match (concat "\\1" greek) t)
             (throw 'expanded t))
         ;; Otherwise, replace xi by x_{i}
         (progn
