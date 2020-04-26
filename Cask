@@ -10,5 +10,4 @@
 (depends-on "yasnippet")
 
 (development
- (depends-on "buttercup")
- (depends-on "ecukes"))
+ (depends-on "buttercup"))

@@ -29,6 +29,9 @@
 
 ;;; Code:
 
+(require 'texmathp)
+(require 'yasnippet)
+
 (defgroup fastmath nil
   "Lighting fast math mode for LaTeX.."
   :tag "Fast input for LaTeX Math Mode"
