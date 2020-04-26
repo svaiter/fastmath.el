@@ -593,11 +593,10 @@
 ;;;###autoload
 (defun fastmath-space ()
   "Insert space or expand current word."
-  (interactive)
   ;; If we are not in math mode, do nothing
-  (if (texmathp)
-      (fastmath--expand-current-word)
-    (insert " ")))
+  (when (and (texmathp) (memq (char-before) '(?\  ?\t)))
+    (delete-backward-char 1)
+    (fastmath--expand-current-word)))
 
 ;;;###autoload
 (defun fastmath-toggle-inline ()
@@ -650,7 +649,6 @@
 
 (defvar fastmath-command-map
   (let ((map (make-sparse-keymap)))
-    ;; (define-key map (kbd "SPC") 'fastmath-space)
     (define-key map (kbd "C-c C-g t") 'fastmath-toggle-inline)
     map)
   "Keymap for fastmath mode after `fastmath-keymap-prefix'.")
@@ -658,7 +656,7 @@
 
 (defvar fastmath-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "SPC") 'fastmath-space)
+    ;; (define-key map (kbd "SPC") 'fastmath-space)
     (when fastmath-keymap-prefix
       (define-key map fastmath-keymap-prefix 'fastmath-command-map))
     (easy-menu-define projectile-mode-menu map
@@ -676,7 +674,12 @@
   :group 'fastmath
   :require 'fastmath
   :lighter " fm"
-  :keymap fastmath-mode-map)
+  :keymap fastmath-mode-map
+  (if fastmath-mode
+      (add-hook 'post-self-insert-hook
+                #'fastmath-space nil t)
+    (remove-hook 'post-self-insert-hook
+                 #'fastmath-space t)))
 
 (provide 'fastmath)
 ;;; fastmath.el ends here
