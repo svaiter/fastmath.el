@@ -29,22 +29,26 @@
 
 ;;; Code:
 
-(require 'ert)
 (require 'fastmath)
+(require 'buttercup)
 
-(ert-deftest test-fastmath-nil-or-empty-p ()
-  (should (equal (fastmath--nil-or-empty-p nil) t))
-  (should (equal (fastmath--nil-or-empty-p "") t))
-  (should (equal (fastmath--nil-or-empty-p "4") nil))
-  (should (equal (fastmath--nil-or-empty-p " ") nil)))
 
-(ert-deftest test-fastmath-fraction ()
-  (should (equal (fastmath--make-fraction "2" 'latin "3" 'latin) "\\\\frac{2}{3}"))
-  (should (equal (fastmath--make-fraction "1" 'latin "a" 'latin) "\\\\frac{1}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'latin "2" 'latin) "\\\\frac{a}{2}"))
-  (should (equal (fastmath--make-fraction "b" 'latin "a" 'latin) "\\\\frac{b}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'greek "a" 'latin) "\\\\frac{\\\\alpha}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'greek "b" 'greek) "\\\\frac{\\\\alpha}{\\\\beta}")))
+(describe "nil-or-empty-p"
+  (it "returns t when nil or empty"
+    (expect (fastmath--nil-or-empty-p nil) :to-equal t)
+    (expect (fastmath--nil-or-empty-p "") :to-equal t))
+  (it "returns nil otherwise"
+    (expect (fastmath--nil-or-empty-p "4") :to-equal nil)
+    (expect (fastmath--nil-or-empty-p " ") :to-equal nil)))
+
+(describe "make-fraction"
+  (it "returns a fraction"
+    (expect (fastmath--make-fraction "2" 'latin "3" 'latin) :to-equal "\\\\frac{2}{3}")
+    (expect (fastmath--make-fraction "2" 'latin "3" 'latin) :to-equal "\\\\frac{2}{3}")
+    (expect (fastmath--make-fraction "a" 'latin "2" 'latin) :to-equal "\\\\frac{a}{2}")
+    (expect (fastmath--make-fraction "b" 'latin "a" 'latin) :to-equal "\\\\frac{b}{a}")
+    (expect (fastmath--make-fraction "a" 'greek "a" 'latin) :to-equal "\\\\frac{\\\\alpha}{a}")
+    (expect (fastmath--make-fraction "a" 'greek "b" 'greek) :to-equal "\\\\frac{\\\\alpha}{\\\\beta}")))
 
 (provide 'fastmath-test)
 ;;; fastmath-test.el ends here
