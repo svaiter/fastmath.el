@@ -51,6 +51,7 @@ Finally, FORMS are run."
          (set-input-method nil)
          ,initform
          (LaTeX-mode)
+         (yas-minor-mode 1)
          (fastmath-mode 1)
          (pop-to-buffer (current-buffer))
          (insert ,initial)
@@ -82,10 +83,18 @@ should match."
                     "§" (replace-regexp-in-string "[|]" "" result)))
                (mark)))))
 
-(defun fm-test-insertion (initial result)
+
+(defun fm-test-insertion-with-kbd (initial keys result)
   (fm-test-with-temp-buffer initial
       nil
-    (execute-kbd-macro (kbd "SPC"))
+    (execute-kbd-macro keys)
     (fm-buffer-equals result)))
+
+(defun fm-test-insertion (initial result)
+  (fm-test-insertion-with-kbd initial (kbd "SPC") result))
+
+(defun fm-test-simple-insertion (initial result)
+  (fm-test-insertion (concat "$ " initial "| $")
+                     (concat "$ " result " $")))
 
 ;;; test-helper.el ends here

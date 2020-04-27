@@ -33,5 +33,62 @@
 (require 'fastmath)
 
 (ert-deftest fm-test-greek-alphabet ()
-  (fm-test-insertion "$ aa| $" "$ \\alpha $")
-  (fm-test-insertion "$ WW| $" "$ \\Omega $"))
+  (fm-test-simple-insertion "aa" "\\alpha")
+  (fm-test-simple-insertion "WW" "\\Omega"))
+
+(ert-deftest fm-test-fraction ()
+  ;; Simple fractions
+  (fm-test-simple-insertion "//2" "\\frac{1}{2}")
+  (fm-test-simple-insertion "//a" "\\frac{1}{a}")
+  (fm-test-simple-insertion "//12" "\\frac{1}{2}")
+  (fm-test-simple-insertion "//3a" "\\frac{3}{a}")
+  (fm-test-simple-insertion "//ba" "\\frac{b}{a}")
+  ;; Snippet
+  (fm-test-insertion-with-kbd "$ //| $" (kbd "SPC a TAB b") "$ \\frac{a}{b|} $" )
+  (fm-test-insertion-with-kbd "$ //| $" (kbd "SPC a TAB b TAB") "$ \\frac{a}{b}| $" )
+  (fm-test-insertion-with-kbd
+   "$ m//| $" (kbd "SPC a TAB b TAB") "$ \\frac{
+  a
+}{
+  b
+}| $"))
+
+(ert-deftest fm-test-integral ()
+  (fm-test-simple-insertion "int0a" "\\int_{0}^{a}")
+  (fm-test-simple-insertion "intWW" "\\int_{\\Omega}")
+  (fm-test-simple-insertion "intR" "\\int_{\\RR}")
+  (fm-test-simple-insertion "intR3" "\\int_{\\RR^{3}}"))
+
+(ert-deftest fm-test-sumlike ()
+  (fm-test-simple-insertion "sumi" "\\sum_{i}")
+  (fm-test-simple-insertion "sumin" "\\sum_{i=1}^{n}")
+  (fm-test-simple-insertion "sumi3n" "\\sum_{i=3}^{n}"))
+
+(ert-deftest fm-test-double-arg-op ()
+  (fm-test-simple-insertion "pdgy" "\\frac{\\partial g}{\\partial y}")
+  (fm-test-simple-insertion "dpxy" "\\dotp{x}{y}"))
+
+(ert-deftest fm-test-single-arg-op ()
+  (fm-test-simple-insertion "hax" "\\hat{x}")
+  (fm-test-simple-insertion "bay" "\\bar{y}")
+  (fm-test-simple-insertion "haaa" "\\hat{\\alpha}"))
+
+(ert-deftest fm-test-mathfont ()
+  (fm-test-simple-insertion "bR" "\\RR")
+  (fm-test-simple-insertion "bRn" "\\RR_{n}")
+  (fm-test-simple-insertion "bR63" "\\RR^{3}"))
+
+(ert-deftest fm-test-five-chars ()
+  (fm-test-simple-insertion "aai6j" "\\alpha_{i}^{j}"))
+
+(ert-deftest fm-test-four-chars ()
+  (fm-test-simple-insertion "xi63" "x_{i}^{3}"))
+
+(ert-deftest fm-test-three-chars ()
+  (fm-test-simple-insertion "aa4" "\\alpha_{4}")
+  (fm-test-simple-insertion "x6i" "x^{i}")
+  (fm-test-simple-insertion "xij" "x_{i,j}"))
+
+(ert-deftest fm-test-two-chars ()
+  (fm-test-simple-insertion "aa" "\\alpha") ; redundant with greek test
+  (fm-test-simple-insertion "xi" "x_{i}"))
