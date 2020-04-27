@@ -10,4 +10,4 @@
 (depends-on "yasnippet")
 
 (development
- (depends-on "buttercup"))
+ (depends-on "ert-runner"))

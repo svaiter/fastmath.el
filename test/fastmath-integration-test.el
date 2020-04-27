@@ -1,4 +1,4 @@
-;;; fastmath-spec-test.el --- Specs for fastmath -*- lexical-binding: t -*-
+;;; fastmath-integration-test.el --- Integration tests for fastmath -*- lexical-binding: t -*-
 
 ;; Copyright © 2020 Samuel Vaiter <samuel.vaiter@gmail.com>
 
@@ -32,19 +32,6 @@
 (require 'ert)
 (require 'fastmath)
 
-(ert-deftest test-fastmath-nil-or-empty-p ()
-  (should (equal (fastmath--nil-or-empty-p nil) t))
-  (should (equal (fastmath--nil-or-empty-p "") t))
-  (should (equal (fastmath--nil-or-empty-p "4") nil))
-  (should (equal (fastmath--nil-or-empty-p " ") nil)))
-
-(ert-deftest test-fastmath-fraction ()
-  (should (equal (fastmath--make-fraction "2" 'latin "3" 'latin) "\\\\frac{2}{3}"))
-  (should (equal (fastmath--make-fraction "1" 'latin "a" 'latin) "\\\\frac{1}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'latin "2" 'latin) "\\\\frac{a}{2}"))
-  (should (equal (fastmath--make-fraction "b" 'latin "a" 'latin) "\\\\frac{b}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'greek "a" 'latin) "\\\\frac{\\\\alpha}{a}"))
-  (should (equal (fastmath--make-fraction "a" 'greek "b" 'greek) "\\\\frac{\\\\alpha}{\\\\beta}")))
-
-(provide 'fastmath-test)
-;;; fastmath-test.el ends here
+(ert-deftest fm-test-greek-alphabet ()
+  (fm-test-insertion "$ aa| $" "$ \\alpha $")
+  (fm-test-insertion "$ WW| $" "$ \\Omega $"))
