@@ -86,7 +86,6 @@
   :type 'alist)
 
 ;; see https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols for more
-;;
 (defcustom fastmath-symbol-abbrevs
   '(
     ;; negations
@@ -158,7 +157,6 @@
   :group 'fastmath
   :type 'alist)
 
-;; Destroy some bindings ! For instance h_a not possible
 (defcustom fastmath-operators-key
   '(
     ;; builtin
@@ -229,7 +227,6 @@
   "Convert a latin CHAR to its equivalent in greek."
   (concat "\\\\" (car (cdr (assoc char fastmath--ascii-to-greek-alist)))))
 
-;; amsfont
 (defun fastmath-mathfont-latex-macro (char font)
   "Construct bold/calmath for CHAR using FONT familly."
   (cond
@@ -254,8 +251,6 @@
         (concat s "_{" sub "}")
       (concat s "_{" sub "}^{" sup "}"))))
 
-;; dont handle when start != nil and end = nil
-;; mayve refactor with previous
 (defun fastmath--make-sumlike (key index start end)
   "Make a sumlike with KEY using INDEX from START to END."
   (let* ((opname (car (cdr (assoc key fastmath-sumlike-key))))
@@ -342,10 +337,6 @@
 (defun fastmath--expand-fraction (last-space)
   "Expand fraction-like expression starting from LAST-SPACE."
   (cond
-   ;; Replace //aabb by snippet \frac{\alpha}{\beta}
-   ;; Replace //abb by snippet \frac{a}{\beta}
-   ;; Replace //aa2 by snippet \frac{\alpha}{3}
-   ;; TODO: do it, for the moment its dumb
    ((fastmath--space-back-search "//\\([[:alnum:]]\\)\\([[:alnum:]]?\\)\\([[:alnum:]]?\\)\\([[:alnum:]]?\\)" last-space)
     (let* ((first (match-string 2))
           (second (match-string 3))
@@ -382,9 +373,6 @@
 
 (defun fastmath--expand-integral (last-space)
   "Expand integral starting from LAST-SPACE."
-  ;; Replace int0a by \int_{0}^{a}
-  ;; Replace intR by \int_{\RR}
-  ;; Replace intR3 by \int_{\RR^{3}}
   (when (fastmath--space-back-search "int\\([[:alnum:]]\\)\\([[:alnum:]]?\\)" last-space)
     (let*
         ((start (match-string 2))
@@ -409,9 +397,6 @@
 (defun fastmath--expand-sumlike (last-space)
   "Expand sum-like double operators starting from LAST-SPACE."
   (when
-   ;; Replace sumi3n by \sum_{i=3}^{n} (and prod,bigcup,...)
-   ;; Replace sumin by \sum_{i=1}^n
-   ;; Replace sumi by \sum_{i}
    (fastmath--space-back-search (concat "\\(" fastmath--sumlike-key-regexp "\\)\\([[:alpha:]]\\)\\([[:alnum:]]?\\)\\([[:alnum:]]?\\)") last-space)
    (let ((key (match-string 2))
          (index (match-string 3))
@@ -438,8 +423,6 @@
 (defun fastmath--expand-single-arg-op (last-space)
   "Expand single operators starting from LAST-SPACE."
   (cond
-   ;; Replace haaa by \hat{\alpha}
-   ;; Replace hax by \hat{x}
    ((fastmath--space-back-search (concat "\\(" fastmath--operators-key-regexp "\\)\\([[:alpha:]]\\)\\([[:alpha:]]?\\)") last-space)
     (let* ((opname (match-string 2))
            (first (match-string 3))
@@ -456,7 +439,6 @@
 (defun fastmath--expand-mathfont (last-space)
   "Expand fontification of symbol starting from LAST-SPACE."
   (cond
-   ;; Replace bR0n by \mathbb{R}_{n} (or macro \RR_{n})
    ((fastmath--space-back-search "\\(b\\|c\\)\\([[:upper:]]\\)\\(6?\\)\\([[:alnum:]]?\\)" last-space)
     (let
         ((font (match-string 2))
@@ -483,7 +465,6 @@
 
 (defun fastmath--expand-four-chars (last-space)
   "Expand 4-chars keys starting from LAST-SPACE."
-  ;; Replace with 4 char seq xi63 by x_{i}^{3}
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
@@ -509,7 +490,6 @@
 
 (defun fastmath--expand-three-chars (last-space)
   "Expand 3-chars keys starting from LAST-SPACE."
-  ;; Deal with 3 char seq
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
@@ -530,7 +510,6 @@
 
 (defun fastmath--expand-two-chars (last-space)
   "Expand 2-chars keys starting from LAST-SPACE."
-  ;; Deal with 2 char seq
   (when (fastmath--space-back-search "\\([[:alpha:]]\\)\\([[:alnum:]]\\)" last-space)
     (let* ((first (match-string-no-properties 2))
            (second (match-string-no-properties 3))
@@ -547,11 +526,9 @@
 
 (defun fastmath--expand-special-two-chars (last-space)
   "Expand (special) 2-chars keys starting from LAST-SPACE."
-  ;; Replace fx by snippet Function
   (when (fastmath--space-back-search "fx" last-space)
     (replace-match "\\1")
     (yas-expand-snippet "$1 : $2 \\\\to $0"))
-  ;; Replace dx by \d x
   (when (fastmath--space-back-search "d\\([[:alpha:]]\\)" last-space)
     (replace-match "\\1\\\\d \\2" t)
     (throw 'expanded t)))
@@ -656,7 +633,6 @@
 
 (defvar fastmath-mode-map
   (let ((map (make-sparse-keymap)))
-    ;; (define-key map (kbd "SPC") 'fastmath-space)
     (when fastmath-keymap-prefix
       (define-key map fastmath-keymap-prefix 'fastmath-command-map))
     (easy-menu-define projectile-mode-menu map
