@@ -1,3 +1,6 @@
+[![License GPL 3][badge-license]](http://www.gnu.org/licenses/gpl-3.0.txt)
+[![Build Status](https://travis-ci.org/svaiter/fastmath.el.svg?branch=master)](https://travis-ci.org/svaiter/fastmath.el)
+
 # Fastmath
 
 Fastmath is an Emacs minor mode to quickly input math when using (La)TeX syntax
