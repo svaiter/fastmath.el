@@ -43,7 +43,7 @@ you should add a hook:
 Please include tests for your pull requests. Fastmath uses ert for testing. To
 run all the tests, run:
 
-    ./run-tests.sh
+    make test
     
 Spec tests are located in `test/fastmath-test.el` and integration tests in
 `test/fastmath-integration-test.el`.
