@@ -675,6 +675,7 @@
   :require 'fastmath
   :lighter " fm"
   :keymap fastmath-mode-map
+  (make-variable-buffer-local 'post-self-insert-hook)
   (if fastmath-mode
       (add-hook 'post-self-insert-hook
                 #'fastmath-space nil t)
