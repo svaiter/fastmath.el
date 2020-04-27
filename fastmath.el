@@ -290,7 +290,7 @@
   "Make operator with KEY using LETTER (with ALPHABET)."
   (let ((opname (car (cdr (assoc key fastmath-operators-key)))))
     (if (equal alphabet 'greek)
-        (concat "\\\\" opname "{" (car (cdr (assoc letter fastmath--ascii-to-greek-alist))) "}")
+        (concat "\\\\" opname "{" (fastmath--convert-latin-to-greek letter) "}")
       (concat "\\\\" opname "{" letter "}"))))
 
 (defun fastmath--make-fraction (num num-al denom denom-al)
