@@ -39,11 +39,6 @@
   :group 'tex
   :link '(url-link :tag "GitHub" "https://github.com/svaiter/fastmath.el"))
 
-(defcustom fastmath-keymap-prefix "C-c C-g"
-  "Fastmath keymap prefix."
-  :group 'fastmath
-  :type 'string)
-
 (defcustom fastmath--ascii-to-greek-alist
   '( ;; lower-case
     ("a" "alpha")
@@ -624,17 +619,8 @@
             (replace-match "$"))))))))
 
 
-(defvar fastmath-command-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-g t") 'fastmath-toggle-inline)
-    map)
-  "Keymap for fastmath mode after `fastmath-keymap-prefix'.")
-(fset 'fastmath-command-map fastmath-command-map)
-
 (defvar fastmath-mode-map
   (let ((map (make-sparse-keymap)))
-    (when fastmath-keymap-prefix
-      (define-key map fastmath-keymap-prefix 'fastmath-command-map))
     (easy-menu-define projectile-mode-menu map
       "Menu for Fastmath"
       '("Fastmath"
