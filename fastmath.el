@@ -46,8 +46,8 @@
 ;;
 ;; - `fastmath-expand' expands the word before point right away,
 ;;   without typing a space.
-;; - `fastmath-interrupt' makes the next space typed in math a literal
-;;   space.  Inserting a space with `quoted-insert' also bypasses the
+;; - `fastmath-interrupt' makes the next space typed a literal space.
+;;   Inserting a space with `quoted-insert' also bypasses the
 ;;   expansion.
 ;; - `fastmath-toggle-inline' toggles the math construct around point
 ;;   between inline and display math.
@@ -449,8 +449,11 @@ after one of the characters `$ { } ( ) [ ] = + - , ^ _ & |'.")
   (fastmath--cached-regexp
    'atom fastmath-unicode-greek-alist
    (lambda (alist)
-     ;; Greek letters need no escaping inside a bracket expression.
-     (concat "[a-zA-Z0-9" (mapconcat #'car alist "") "]"))))
+     ;; `regexp-opt' takes care of keys such as `]' or `-' that would
+     ;; break a hand-made bracket expression.
+     (if alist
+         (concat "\\(?:[a-zA-Z0-9]\\|" (regexp-opt (mapcar #'car alist)) "\\)")
+       "[a-zA-Z0-9]"))))
 
 (defun fastmath--word-regexp ()
   "Return a regexp matching a word made of atoms."
@@ -665,16 +668,18 @@ inverse and `//' followed by two atoms gives their quotient."
   "Expand the integral WORD.
 `int' alone gives `\\int'; one atom gives the lower bound and a
 second one the upper bound.  A lower bound `R' is the blackboard
-bold R, and the following atom is its exponent."
-  (let ((rest (substring word 3)))
+bold R (when `fastmath-mathfont-alist' has a `b' entry), and the
+following atom is its exponent."
+  (let ((rest (substring word 3))
+        (bbr (and (assoc "b" fastmath-mathfont-alist)
+                  (fastmath--make-mathfont "b" "R"))))
     (if (equal rest "")
         (fastmath--make-integral nil)
       (pcase (fastmath--tokenize rest)
-        (`(("R" . latin)) (fastmath--make-integral (fastmath--make-mathfont "b" "R")))
-        (`(("R" . latin) ,exp)
+        ((and `(("R" . latin)) (guard bbr)) (fastmath--make-integral bbr))
+        ((and `(("R" . latin) ,exp) (guard bbr))
          (fastmath--make-integral
-          (fastmath--make-sub-and-sup-script (fastmath--make-mathfont "b" "R")
-                                             nil (car exp))))
+          (fastmath--make-sub-and-sup-script bbr nil (car exp))))
         (`(,lower) (fastmath--make-integral (car lower)))
         (`(,lower ,upper) (fastmath--make-integral (car lower) (car upper)))))))
 
@@ -683,15 +688,17 @@ bold R, and the following atom is its exponent."
   (pcase (fastmath--split-key word (mapcar #'car fastmath-sumlike-key))
     (`(,key . ,rest)
      (let ((name (cdr (assoc key fastmath-sumlike-key))))
-       (if (equal rest "")
-           (fastmath--make-sumlike name nil)
+       (cond
+        ((not (stringp name)) nil)
+        ((equal rest "") (fastmath--make-sumlike name nil))
+        (t
          (pcase (fastmath--tokenize rest)
            ((and `(,index . ,bounds) (guard (fastmath--letter-atom-p index)))
             (pcase bounds
               ('nil (fastmath--make-sumlike name (car index)))
               (`(,end) (fastmath--make-sumlike name (car index) nil (car end)))
               (`(,start ,end)
-               (fastmath--make-sumlike name (car index) (car start) (car end)))))))))))
+               (fastmath--make-sumlike name (car index) (car start) (car end))))))))))))
 
 (defun fastmath--rule-double-arg (word)
   "Expand the partial derivative (`pd') or dot product (`dp') WORD."
@@ -722,13 +729,14 @@ bold R, and the following atom is its exponent."
   "Expand the single-argument operator WORD, see `fastmath-operators-key'."
   (pcase (fastmath--split-key word (mapcar #'car fastmath-operators-key))
     (`(,key . ,rest)
-     (pcase (fastmath--parse-modifiers rest)
-       ((and `((,arg . ,subs) ,sups) (guard (fastmath--letter-atom-p arg)))
-        (fastmath--make-sub-and-sup-script
-         (fastmath--make-operator (cdr (assoc key fastmath-operators-key))
-                                  (car arg))
-         (fastmath--join-atoms subs)
-         (fastmath--join-atoms sups)))))))
+     (let ((name (cdr (assoc key fastmath-operators-key))))
+       (pcase (fastmath--parse-modifiers rest)
+         ((and `((,arg . ,subs) ,sups)
+               (guard (and (stringp name) (fastmath--letter-atom-p arg))))
+          (fastmath--make-sub-and-sup-script
+           (fastmath--make-operator name (car arg))
+           (fastmath--join-atoms subs)
+           (fastmath--join-atoms sups))))))))
 
 (defun fastmath--rule-differential (word)
   "Expand the differential WORD, `d' followed by one letter atom.
@@ -842,6 +850,8 @@ Return non-nil if the word was expanded."
               (when result
                 (setq start beg)))))))
     (when result
+      ;; Let one `undo' take the expansion back and leave the word.
+      (undo-boundary)
       (delete-region start (point))
       (fastmath--insert-result result)
       t)))
@@ -849,28 +859,32 @@ Return non-nil if the word was expanded."
 ;;;; Commands
 
 (defvar-local fastmath--interrupted nil
-  "Non-nil means that the next space typed in math is inserted literally.
-Set by `fastmath-interrupt' and cleared by that space.")
+  "Non-nil means that the next space typed is inserted literally.
+Set by `fastmath-interrupt' and cleared by the next space typed in
+the buffer, whether or not it is in math.")
 
 (defun fastmath-space ()
   "Expand the word before point after a space has been typed in math mode.
 This function is meant for `post-self-insert-hook'.  It does
-nothing unless the character just typed is a space, and point is
-in math according to `fastmath-math-predicate'.  When a rule
-applies, the word is replaced and the space is consumed.  Errors
+nothing unless the character just typed is a space,
+`fastmath-expand-on-space' is non-nil and point is in math
+according to `fastmath-math-predicate'.  When a rule applies, the
+word is replaced and the space is consumed.  After
+`fastmath-interrupt', the first space typed is left alone.  Errors
 are reported as messages and leave the typed text as it was."
-  (when (and fastmath-expand-on-space
-             (eq last-command-event ?\s)
+  (when (and (eq last-command-event ?\s)
              (eq (char-before) ?\s))
-    (condition-case err
-        (when (funcall fastmath-math-predicate)
-          (if fastmath--interrupted
-              (setq fastmath--interrupted nil)
+    (cond
+     (fastmath--interrupted
+      (setq fastmath--interrupted nil))
+     (fastmath-expand-on-space
+      (condition-case err
+          (when (funcall fastmath-math-predicate)
             (atomic-change-group
               (delete-char -1)
               (unless (fastmath--expand-before-point)
-                (insert " ")))))
-      (error (message "fastmath: %s" (error-message-string err))))))
+                (insert " "))))
+        (error (message "fastmath: %s" (error-message-string err))))))))
 
 ;;;###autoload
 (defun fastmath-expand ()
@@ -881,10 +895,10 @@ Unlike typing a space, this command does not check
   (unless (atomic-change-group (fastmath--expand-before-point))
     (user-error "Nothing to expand before point")))
 
-;;;###autoload
 (defun fastmath-interrupt ()
-  "Insert the next space typed in math literally instead of expanding.
-The effect lasts for one space only.  Inserting the space with
+  "Insert the next space typed literally instead of expanding before it.
+The effect lasts for one space only: the next space typed in this
+buffer, in math or not, consumes it.  Inserting the space with
 `quoted-insert' (\\[quoted-insert]) is another way to bypass the
 expansion."
   (interactive)
@@ -902,7 +916,8 @@ expansion."
   "Return the position of the first unescaped CLOSE after START, or nil."
   (save-excursion
     (goto-char start)
-    (let ((found nil))
+    (let ((found nil)
+          (case-fold-search nil))
       (while (and (not found) (search-forward close nil t))
         (unless (fastmath--escaped-p (match-beginning 0))
           (setq found (match-beginning 0))))
@@ -923,6 +938,18 @@ kept at the same place inside the content."
     (goto-char open-beg)
     (insert new-open trimmed new-close)
     (goto-char (+ open-beg (length new-open) offset))))
+
+(defun fastmath--environment-opening (pos name)
+  "Return the text opening the math environment NAME at POS.
+That is `\\begin{NAME}', followed by its column argument for the
+alignat family of environments."
+  (let ((open (format "\\begin{%s}" name)))
+    (save-excursion
+      (goto-char pos)
+      (if (and (string-match-p "\\`\\(?:x*\\|AmS\\)alignat\\*?\\'" name)
+               (looking-at (concat (regexp-quote open) "[ \t]*{[^}\n]*}")))
+          (match-string-no-properties 0)
+        open))))
 
 ;;;###autoload
 (defun fastmath-toggle-inline ()
@@ -954,7 +981,8 @@ by `fastmath-display-math-style'.  Display math (`\\[...\\]',
      ((equal why "\\[")
       (fastmath--rewrap-math pos "\\[" "\\]" inline-open inline-close))
      ((and (stringp why) (member why texmathp-environments))
-      (fastmath--rewrap-math pos (format "\\begin{%s}" why) (format "\\end{%s}" why)
+      (fastmath--rewrap-math pos (fastmath--environment-opening pos why)
+                             (format "\\end{%s}" why)
                              inline-open inline-close))
      (t (user-error "Cannot toggle math introduced by %s" why)))))
 

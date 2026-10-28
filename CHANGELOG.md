@@ -30,8 +30,8 @@ change what some words expand to.
   two/three/four/five-character rules are subsumed.
 - Command `fastmath-expand`: expand the word before point without typing a
   space, in or out of math.
-- Command `fastmath-interrupt`: the next space typed in math is inserted
-  literally (one shot). `C-q SPC` also bypasses the expansion.
+- Command `fastmath-interrupt`: the next space typed is inserted literally
+  (one shot). `C-q SPC` also bypasses the expansion.
 - Options `fastmath-expand-on-space`, `fastmath-math-predicate`,
   `fastmath-mathfont-alist`, `fastmath-differential-format`,
   `fastmath-dot-product-format`, `fastmath-display-math-style`,

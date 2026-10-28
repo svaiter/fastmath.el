@@ -354,7 +354,7 @@ Rule 10. `d` followed by one letter atom (`fastmath-differential-format`).
 |--------------------------|-------------|
 | `fastmath-mode`          | Toggle the minor mode (lighter ` fm`). |
 | `fastmath-expand`        | Expand the word before point now, without typing a space. Works outside math and when `fastmath-expand-on-space` is nil. |
-| `fastmath-interrupt`     | Insert the next space typed in math literally. One shot. (`C-q SPC` always inserts a literal space.) |
+| `fastmath-interrupt`     | Insert the next space typed literally, without expanding. One shot. (`C-q SPC` always inserts a literal space.) |
 | `fastmath-toggle-inline` | Toggle the math around point between inline and display math, without prompting. |
 
 `fastmath-toggle-inline` turns `$x$` or `\(x\)` into display math as set by

@@ -296,7 +296,19 @@
     ;; One shot only.
     (should-not fastmath--interrupted)
     (execute-kbd-macro (kbd "b b SPC"))
-    (fm-buffer-equals "$ aa \\beta| $")))
+    (fm-buffer-equals "$ aa \\beta| $"))
+  ;; The next space consumes the flag even outside math, so that it
+  ;; cannot linger and surprise later.
+  (fm-test-with-temp-buffer "text| $aa$" nil
+    (fastmath-interrupt)
+    (execute-kbd-macro (kbd "SPC"))
+    (fm-buffer-equals "text | $aa$")
+    (should-not fastmath--interrupted))
+  (let ((fastmath-expand-on-space nil))
+    (fm-test-with-temp-buffer "$ aa| $" nil
+      (fastmath-interrupt)
+      (execute-kbd-macro (kbd "SPC"))
+      (should-not fastmath--interrupted))))
 
 (ert-deftest fm-test-expand-on-space-nil ()
   (let ((fastmath-expand-on-space nil))
@@ -307,6 +319,9 @@
   (let ((fastmath-math-predicate (lambda () t)))
     (fm-test-insertion "aa|" "\\alpha|"))
   (let ((fastmath-math-predicate #'ignore))
+    (fm-test-simple-insertion "aa" "aa "))
+  ;; A predicate that signals leaves the typed text alone.
+  (let ((fastmath-math-predicate (lambda () (error "Boom"))))
     (fm-test-simple-insertion "aa" "aa ")))
 
 (ert-deftest fm-test-author-formats ()
@@ -357,6 +372,122 @@
     (with-temp-buffer
       (should-not (memq #'fastmath-space post-self-insert-hook)))))
 
+;;;; Real-world typing scenarios
+
+(ert-deftest fm-test-undo-restores-word ()
+  ;; One undo after an expansion gives the typed word back, nothing else.
+  (fm-test-with-temp-buffer "$ | $" nil
+    (buffer-enable-undo)
+    (execute-kbd-macro (kbd "a a SPC"))
+    (fm-buffer-equals "$ \\alpha| $")
+    (undo-boundary)
+    (let ((last-command 'ignore)) (undo))
+    (fm-buffer-equals "$ aa| $"))
+  ;; A space that expands nothing is undone like any other space.
+  (fm-test-with-temp-buffer "$ x| $" nil
+    (buffer-enable-undo)
+    (undo-boundary)
+    (execute-kbd-macro (kbd "SPC"))
+    (fm-buffer-equals "$ x | $")
+    (undo-boundary)
+    (let ((last-command 'ignore)) (undo))
+    (fm-buffer-equals "$ x| $")))
+
+(ert-deftest fm-test-text-in-math ()
+  ;; `\text{}' switches math off: no expansion inside it.
+  (fm-test-insertion "$ \\text{a xi|} $" "$ \\text{a xi |} $")
+  (fm-test-insertion "$ \\text{a|} + xi $" "$ \\text{a |} + xi $"))
+
+(ert-deftest fm-test-non-latex-buffer ()
+  ;; The mode may be enabled anywhere; `texmathp' still decides.
+  (save-window-excursion
+    (with-temp-buffer
+      (set-input-method nil)
+      (fundamental-mode)
+      (fastmath-mode 1)
+      (pop-to-buffer (current-buffer))
+      (insert "aa")
+      (execute-kbd-macro (kbd "SPC"))
+      (should (equal (buffer-string) "aa "))
+      (insert "$ aa")
+      (execute-kbd-macro (kbd "SPC"))
+      (should (equal (buffer-string) "aa $ \\alpha")))))
+
+(ert-deftest fm-test-case-fold-search ()
+  ;; A global `case-fold-search' of t must not blur the case of keys.
+  (fm-test-with-temp-buffer "$ bR| $" nil
+    (let ((case-fold-search t))
+      (execute-kbd-macro (kbd "SPC")))
+    (fm-buffer-equals "$ \\mathbb{R}| $"))
+  (fm-test-with-temp-buffer "$ Xi| $" nil
+    (let ((case-fold-search t))
+      (execute-kbd-macro (kbd "SPC")))
+    (fm-buffer-equals "$ X_{i}| $"))
+  (fm-test-with-temp-buffer "$ WW| $" nil
+    (let ((case-fold-search t))
+      (execute-kbd-macro (kbd "SPC")))
+    (fm-buffer-equals "$ \\Omega| $")))
+
+(ert-deftest fm-test-custom-keys-with-metacharacters ()
+  (let ((fastmath-symbol-abbrevs '(("a.b" . "\\ab") ("x*" . "\\xs"))))
+    (fm-test-simple-insertion "a.b" "\\ab ")
+    (fm-test-simple-insertion "x*" "\\xs ")
+    (fm-test-simple-insertion "aXb" "a_{X,b}")
+    (fm-test-simple-insertion "xx" "\\xi"))
+  (let ((fastmath-unicode-greek-alist
+         '(("]" . "\\rb") ("-" . "\\dash") ("α" . "\\alpha"))))
+    (fm-test-simple-insertion "xα" "x_{\\alpha}")
+    (fm-test-simple-insertion "α" "\\alpha")))
+
+(ert-deftest fm-test-edge-words ()
+  ;; Greedy tokenization, digits and the `6' marker in odd places.
+  (fm-test-simple-insertion "ddd" "\\delta_{d}")
+  (fm-test-simple-insertion "dddd" "\\delta_{\\delta}")
+  (fm-test-simple-insertion "xxx" "\\xi_{x}")
+  (fm-test-simple-insertion "aaa" "\\alpha_{a}")
+  (fm-test-simple-insertion "AA" "A_{A}")
+  (fm-test-simple-insertion "a1" "a_{1}")
+  (fm-test-simple-insertion "x66" "x^{6}")
+  (fm-test-simple-insertion "x66i" "x^{6,i}")
+  (fm-test-simple-insertion "x16" "x_{1,6}")
+  (fm-test-simple-insertion "αα" "\\alpha_{\\alpha}")
+  (fm-test-simple-insertion "Ωi" "\\Omega_{i}")
+  (fm-test-no-expansion "1a")
+  (fm-test-no-expansion "66")
+  (fm-test-no-expansion "6x")
+  ;; A capital that maps to a latin letter is a single letter.
+  (fm-test-no-expansion "Α"))
+
+(ert-deftest fm-test-rule-precedence ()
+  ;; Math fonts (upper-case letter) beat the operator `bm' / `ba'.
+  (fm-test-simple-insertion "bM" "\\mathbb{M}")
+  (fm-test-simple-insertion "bmx" "\\bm{x}")
+  (fm-test-simple-insertion "bA" "\\mathbb{A}")
+  (fm-test-simple-insertion "baA" "\\bar{A}")
+  ;; Sum-like keys beat the math font `c'.
+  (fm-test-simple-insertion "capA" "\\bigcap_{A}")
+  (fm-test-simple-insertion "cAp" "\\mathcal{A}_{p}")
+  (fm-test-simple-insertion "cup" "\\bigcup")
+  ;; `dint' is a symbol; `dp'/`pd' need two atoms; `d' + one atom is a
+  ;; differential; otherwise the head rule applies.
+  (fm-test-simple-insertion "dint" "\\int_{-\\infty}^{+\\infty} ")
+  (fm-test-simple-insertion "dp" "\\mathrm{d}p")
+  (fm-test-simple-insertion "pd" "p_{d}")
+  (fm-test-simple-insertion "dpx" "d_{p,x}")
+  (fm-test-simple-insertion "ddx" "\\delta_{x}")
+  (fm-test-simple-insertion "dxi" "d_{x,i}")
+  ;; Operators take any atom, keys alone fall back to the head rule.
+  (fm-test-simple-insertion "hat" "\\hat{t}")
+  (fm-test-simple-insertion "ha" "h_{a}")
+  (fm-test-simple-insertion "bm" "b_{m}")
+  (fm-test-simple-insertion "ba" "b_{a}")
+  ;; Symbols are whole words only.
+  (fm-test-simple-insertion "lll" "\\ell ")
+  (fm-test-simple-insertion "ll" "\\lambda")
+  (fm-test-simple-insertion "x62" "x^{2}")
+  (fm-test-simple-insertion "fxi" "f_{x,i}")
+  (fm-test-simple-insertion "lpx" "l_{p,x}"))
+
 ;;;; Toggle inline/display
 
 (ert-deftest fm-test-toggle-inline-to-display ()
@@ -387,6 +518,13 @@
   (fm-test-with-temp-buffer "\\begin{align*}\n  a &= b|\n\\end{align*}" nil
     (fastmath-toggle-inline)
     (fm-buffer-equals "$a &= b|$"))
+  ;; The column argument of alignat is not part of the content.
+  (fm-test-with-temp-buffer "\\begin{alignat}{2}\n  a &= b|\n\\end{alignat}" nil
+    (fastmath-toggle-inline)
+    (fm-buffer-equals "$a &= b|$"))
+  (fm-test-with-temp-buffer "\\begin{alignat*}{2}\n  a|\n\\end{alignat*}" nil
+    (fastmath-toggle-inline)
+    (fm-buffer-equals "$a|$"))
   (let ((fastmath-inline-math-style 'parens))
     (fm-test-with-temp-buffer "text \\[ x|y \\] more" nil
       (fastmath-toggle-inline)

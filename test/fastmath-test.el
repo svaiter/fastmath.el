@@ -200,7 +200,11 @@
   (should (equal (fastmath--rule-integral "int0a") "\\int_{0}^{a}"))
   (should (equal (fastmath--rule-integral "intR") "\\int_{\\mathbb{R}}"))
   (should (equal (fastmath--rule-integral "intRn") "\\int_{\\mathbb{R}^{n}}"))
-  (should (null (fastmath--rule-integral "int0ab"))))
+  (should (null (fastmath--rule-integral "int0ab")))
+  ;; Without a blackboard font, R is an ordinary bound.
+  (let ((fastmath-mathfont-alist '(("c" . "\\mathcal{%s}"))))
+    (should (equal (fastmath--rule-integral "intR") "\\int_{R}"))
+    (should (equal (fastmath--rule-integral "intRn") "\\int_{R}^{n}"))))
 
 (ert-deftest test-fastmath-rule-sumlike ()
   (should (equal (fastmath--rule-sumlike "prod") "\\prod"))
@@ -225,6 +229,11 @@
   (should (equal (fastmath--rule-operator "whaxi6j") "\\widehat{x}_{i}^{j}"))
   (should (null (fastmath--rule-operator "ha")))
   (should (null (fastmath--rule-operator "ha1")))
+  ;; A nil macro name declines instead of producing `\\{x}'.
+  (let ((fastmath-operators-key '(("ha" . nil))))
+    (should (null (fastmath--rule-operator "hax"))))
+  (let ((fastmath-sumlike-key '(("sum" . nil))))
+    (should (null (fastmath--rule-sumlike "sumi"))))
   (should (equal (fastmath--rule-differential "dx") "\\mathrm{d}x"))
   (should (null (fastmath--rule-differential "dd")))
   (should (null (fastmath--rule-differential "d1")))
@@ -253,6 +262,33 @@
     (should (equal (fastmath--rule-operator "nox") "\\norm{x}")))
   (let ((fastmath-unicode-greek-alist '(("ж" . "\\zhe"))))
     (should (string-match-p (fastmath--atom-regexp) "ж"))
+    (should-not (string-match-p (fastmath--atom-regexp) "α"))))
+
+;;;; Regexp construction
+
+(ert-deftest test-fastmath-symbol-regexp-metacharacters ()
+  (let* ((fastmath-symbol-abbrevs '(("a.b" . "\\ab") ("x*" . "\\xs") ("[" . "\\lb")))
+         (regexp (concat "\\`" (fastmath--symbol-regexp) "\\'")))
+    (should (string-match-p regexp "a.b"))
+    (should (string-match-p regexp "x*"))
+    (should (string-match-p regexp "["))
+    (should-not (string-match-p regexp "aXb"))
+    (should-not (string-match-p regexp "xx"))
+    (should-not (string-match-p regexp "x"))))
+
+(ert-deftest test-fastmath-atom-regexp-special-keys ()
+  ;; Keys that are special inside a bracket expression must not break
+  ;; the atom regexp.
+  (let* ((fastmath-unicode-greek-alist
+          '(("]" . "\\rb") ("-" . "\\dash") ("^" . "\\hat") ("α" . "\\alpha")))
+         (regexp (concat "\\`" (fastmath--atom-regexp) "\\'")))
+    (dolist (key '("α" "]" "-" "^" "a" "Z" "0"))
+      (should (string-match-p regexp key)))
+    (dolist (key '("/" "β" " " ""))
+      (should-not (string-match-p regexp key)))
+    (should (equal (fastmath--tokenize "x]") '(("x" . latin) ("\\rb" . greek)))))
+  (let ((fastmath-unicode-greek-alist nil))
+    (should (string-match-p (concat "\\`" (fastmath--atom-regexp) "\\'") "a"))
     (should-not (string-match-p (fastmath--atom-regexp) "α"))))
 
 ;;;; Plain snippets
