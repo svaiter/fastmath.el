@@ -1,11 +1,10 @@
-;;; fastmath-integration-test.el --- Test helpers for fastmath -*- lexical-binding: t -*-
+;;; test-helper.el --- Test helpers for fastmath -*- lexical-binding: t -*-
 
 ;; Copyright © 2020 Samuel Vaiter <samuel.vaiter@gmail.com>
 
 ;; Author: Samuel Vaiter <samuel.vaiter@gmail.com>
-;; URL: https//github.com/svaiter/fastmath.el
-;; Keywords: tex; math
-;; Version: 1.0-snapshot
+;; URL: https://github.com/svaiter/fastmath.el
+;; Keywords: tex, wp
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -24,24 +23,31 @@
 
 ;;; Commentary:
 ;;
-;; Lighting fast math mode for LaTeX.
+;; Helpers shared by the fastmath test suite.  `fm-test-with-temp-buffer'
+;; sets up a LaTeX buffer with `fastmath-mode' (and, unless `fm-test-yas'
+;; is nil, `yas-minor-mode') enabled; `fm-test-simple-insertion' types a
+;; word followed by a space inside inline math and compares the result.
 ;;
 
 ;;; Code:
 
 (require 'ert)
+(require 'latex)
+(require 'yasnippet)
 (require 'fastmath)
 
-;; Imported from smartparens
-;; TODO: Simplify, we need less here
+(defvar fm-test-yas t
+  "Non-nil means `fm-test-with-temp-buffer' enables `yas-minor-mode'.")
+
+;; Imported from smartparens.
 (defmacro fm-test-with-temp-buffer (initial initform &rest forms)
   "Setup a new buffer, then run FORMS.
-First, INITFORM are run in the newly created buffer.
-Then `smartparens-mode' is turned on.  Then INITIAL is
-inserted (it is expected to evaluate to string).  If INITIAL
-contains | put point there as the initial position (the character
-is then removed).  If it contains §, put mark there (the
-character is then removed).
+First, INITFORM are run in the newly created buffer.  Then
+`LaTeX-mode', `yas-minor-mode' (see `fm-test-yas') and
+`fastmath-mode' are turned on.  Then INITIAL is inserted (it is
+expected to evaluate to string).  If INITIAL contains | put point
+there as the initial position (the character is then removed).
+If it contains §, put mark there (the character is then removed).
 Finally, FORMS are run."
   (declare (indent 2)
            (debug (form form body)))
@@ -51,7 +57,8 @@ Finally, FORMS are run."
          (set-input-method nil)
          ,initform
          (LaTeX-mode)
-         (yas-minor-mode 1)
+         (when fm-test-yas
+           (yas-minor-mode 1))
          (fastmath-mode 1)
          (pop-to-buffer (current-buffer))
          (insert ,initial)
@@ -83,18 +90,25 @@ should match."
                     "§" (replace-regexp-in-string "[|]" "" result)))
                (mark)))))
 
-
 (defun fm-test-insertion-with-kbd (initial keys result)
+  "Insert INITIAL, type KEYS and compare the buffer with RESULT."
   (fm-test-with-temp-buffer initial
       nil
     (execute-kbd-macro keys)
     (fm-buffer-equals result)))
 
 (defun fm-test-insertion (initial result)
+  "Insert INITIAL, type a space and compare the buffer with RESULT."
   (fm-test-insertion-with-kbd initial (kbd "SPC") result))
 
 (defun fm-test-simple-insertion (initial result)
+  "Type INITIAL and a space inside inline math; expect RESULT there."
   (fm-test-insertion (concat "$ " initial "| $")
                      (concat "$ " result " $")))
 
+(defun fm-test-no-expansion (initial)
+  "Type INITIAL and a space inside inline math; expect a plain space."
+  (fm-test-simple-insertion initial (concat initial " ")))
+
+(provide 'test-helper)
 ;;; test-helper.el ends here

@@ -1,3 +1,4 @@
-.cask
-elpa*
-fastmath.elc
+# Repo-local package directory populated by test/bootstrap.el
+.elpa/
+# Byte-compiled files
+*.elc

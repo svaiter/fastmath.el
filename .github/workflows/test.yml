@@ -1,29 +1,51 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    paths-ignore:
-    - '**.md'
-    - 'gifs/*'
+  pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    # Only the snapshot build may fail without failing the workflow.
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
+      fail-fast: false
       matrix:
         emacs_version:
-          - 26.3
-          - snapshot
-    env:
-      EMACS_LINT_IGNORE: ${{ matrix.lint_ignore }}
+          - '29.4'
+          - '30.1'
+        include:
+          # Lint only on the newest stable releases: the byte-compiler
+          # warnings, checkdoc rules and package-lint's list of known
+          # symbols all evolve between Emacs versions, so older releases
+          # produce spurious findings for code that is correct on the
+          # version the package targets.  The tests run everywhere.
+          - emacs_version: '29.4'
+            lint: true
+          - emacs_version: '30.1'
+            lint: true
+          - emacs_version: snapshot
+            experimental: true
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-python@v1.1.1
+      - uses: actions/checkout@v4
+
       - uses: purcell/setup-emacs@master
         with:
           version: ${{ matrix.emacs_version }}
-      - uses: conao3/setup-cask@master
 
-      - name: Run tests
+      - name: Cache packages
+        uses: actions/cache@v4
+        with:
+          path: .elpa
+          key: elpa-${{ runner.os }}-emacs-${{ matrix.emacs_version }}-${{ hashFiles('test/bootstrap.el') }}
+
+      - name: Install dependencies
+        run: make deps
+
+      - name: Lint
+        if: ${{ matrix.lint == true }}
+        run: make lint
+
+      - name: Test
         run: make test
