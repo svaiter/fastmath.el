@@ -6,7 +6,7 @@
 ;; URL: https://github.com/svaiter/fastmath.el
 ;; Keywords: tex, wp
 ;; Version: 0.2.0
-;; Package-Requires: ((emacs "27.1") (auctex "12.2") (yasnippet "0.14"))
+;; Package-Requires: ((emacs "28.1") (auctex "12.2") (yasnippet "0.14"))
 
 ;; This file is NOT part of GNU Emacs.
 

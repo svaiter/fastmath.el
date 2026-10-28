@@ -81,7 +81,7 @@ LaTeX buffers:
 
 ### Requirements
 
-- GNU Emacs 27.1 or later.
+- GNU Emacs 28.1 or later (the minimum of current AUCTeX releases).
 - [AUCTeX](https://www.gnu.org/software/auctex/) 12.2 or later, for `texmathp`
   (math mode detection) and `fastmath-toggle-inline`.
 - [yasnippet](https://github.com/joaotavora/yasnippet) 0.14 or later,
@@ -437,7 +437,7 @@ end-to-end tests typing in a LaTeX buffer are in
     make test    # run the ERT suite (SELECTOR='"integration"' to filter)
     make lint    # byte-compile with warnings as errors, checkdoc, package-lint
 
-CI runs the tests on Emacs 27.2, 28.2, 29.4 and 30.1 (plus a snapshot build
+CI runs the tests on Emacs 28.2, 29.4 and 30.1 (plus a snapshot build
 that may fail), and the linters on 29.4 and 30.1.
 
 ## License

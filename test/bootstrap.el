@@ -31,7 +31,7 @@
 ;;
 ;; The file is idempotent: once the packages are installed it only
 ;; initializes package.el, so it is cheap to load from every Makefile
-;; target.  It works on Emacs 27.1 and later.
+;; target.  It works on Emacs 28.1 and later.
 
 ;;; Code:
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Require Emacs 28.1: AUCTeX releases on GNU ELPA no longer install on
+  Emacs 27, so the 27.2 CI job is dropped.
+
 ## 0.2.0 - 2026-10-28
 
 A rewrite of the expansion engine of the 2020 proof of concept. The input
